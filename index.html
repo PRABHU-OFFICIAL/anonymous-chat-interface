@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Code Hub</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.25.0/themes/prism.css">
+  <script src="https://www.gstatic.com/firebasejs/8.8.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.8.1/firebase-database.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.25.0"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs/components/prism-javascript.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.8.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.8.1/firebase-database.js"></script>
+  <script src="https://kit.fontawesome.com/34fc0871e3.js" crossorigin="anonymous"></script>
+</head>
+
+<body>
+  <div class="container">
+    <h1>Code Hub</h1>
+
+    <div class="code-form">
+      <h2>Send Code or Querry</h2>
+      <form id="codeForm">
+        <div class="username-input-container">
+          <input type="text" id="usernameInput" placeholder="Enter your Username" required>
+        </div>
+        <div class="topic-input-container">
+          <input type="text" id="topicInput" placeholder="Enter the Topic of Discussion" required>
+        </div>
+        <textarea class="code-input" id="codeInput" placeholder="Enter your Code or Querry here"></textarea>
+        <br>
+        <div style="display: flex; align-items: center; width: 100%;">
+          <div class="file-input">
+            <input type="file" id="fileInput">
+            <label for="fileInput">Upload File</label>
+            <span class="file-name"></span>
+          </div>
+          <div id="postCounter"></div>
+        </div>
+        <br>
+        <button class="btn-submit" type="submit">Post</button>
+      </form>
+    </div>
+
+    <!-- Discussion Section -->
+    <div class="discussion">
+      <h2>Discussion</h2>
+      <div id="messages"></div>
+    </div>
+  </div>
+
+  <script type="module">
+    // Import the functions you need from the SDKs you need
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics.js";
+    // TODO: Add SDKs for Firebase products that you want to use
+    // https://firebase.google.com/docs/web/setup#available-libraries
+
+    // Your web app's Firebase configuration
+    // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+    const firebaseConfig = {
+      apiKey: "AIzaSyDLerO-W-6vKsD0oISAHY4umLeu5c8iNwM",
+      authDomain: "code-hub-923c2.firebaseapp.com",
+      projectId: "code-hub-923c2",
+      storageBucket: "code-hub-923c2.appspot.com",
+      messagingSenderId: "655494904899",
+      appId: "1:655494904899:web:7e162af6f030030fe228f6",
+      measurementId: "G-Z5Z5FF65E0"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const analytics = getAnalytics(app);
+
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+
+    const codeForm = document.getElementById('codeForm');
+    const codeInput = document.getElementById('codeInput');
+    const fileInput = document.getElementById('fileInput');
+    const fileName = document.querySelector('.file-name');
+    const postCounterElement = document.getElementById('postCounter');
+    const messagesContainer = document.getElementById('messages');
+    const topicInput = document.getElementById('topicInput');
+
+    const database = firebase.database();
+    const messagesRef = database.ref('messages');
+
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        fileName.textContent = file.name;
+      } else {
+        fileName.textContent = '';
+      }
+    });
+
+
+    codeForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+
+      const code = codeInput.value;
+      const file = fileInput.files[0];
+      const username = usernameInput.value;
+      const topic = topicInput.value;
+
+      if ((username.trim() === '' || code.trim() === '' || topic.trim() === '') && (username.trim() === '' || !file || topic.trim() === '')) {
+        return;
+      }
+
+      const message = {
+        username: username,
+        topic: topic,
+        code: code,
+        fileName: file ? file.name : '',
+        postTime: getCurrentTime() // Function to get the current time (e.g., '18:30')
+      };
+
+      messagesRef.push(message);
+
+      codeInput.value = '';
+      fileInput.value = '';
+      fileName.textContent = '';
+      usernameInput.value = '';
+      topicInput.value = '';
+    });
+
+    // Listen for new messages and display them
+    messagesRef.on('child_added', (snapshot) => {
+      const message = snapshot.val();
+      const messageElement = createMessageElement(message);
+      messagesContainer.appendChild(messageElement);
+
+      // Fetching the no of posts
+      fetchPostCount();
+
+      // Highlighting the syntax
+      Prism.highlightAll();
+    });
+
+    // Create a message element based on the message data
+    function createMessageElement(message) {
+      const messageElement = document.createElement('div');
+      messageElement.className = 'message';
+
+      const usernameElement = document.createElement('div');
+      usernameElement.textContent = message.username;
+      usernameElement.textContent = message.username.toUpperCase();
+      usernameElement.style.fontWeight = 'bold';
+      messageElement.appendChild(usernameElement);
+
+      if (message.topic) {
+        const topicElement = document.createElement('p');
+        topicElement.className = 'topic';
+        topicElement.textContent = message.topic;
+        messageElement.appendChild(topicElement);
+      }
+
+      const postTimeElement = document.createElement('p');
+      postTimeElement.className = 'post-time';
+      postTimeElement.textContent = message.postTime;
+      messageElement.appendChild(postTimeElement);
+
+      if (message.code) {
+        const codeElement = document.createElement('pre');
+        const codeBlock = document.createElement('code');
+        codeBlock.textContent = message.code;
+        codeBlock.classList.add('language-javascript'); // Replace with the appropriate language class
+        codeElement.appendChild(codeBlock);
+        messageElement.appendChild(codeElement);
+      }
+
+      if (message.fileName) {
+        const fileDownload = document.createElement('div');
+        fileDownload.className = 'file-download';
+        const fileIcon = document.createElement('span');
+        fileIcon.innerHTML = '&#128462;';
+        const fileLink = document.createElement('a');
+        fileLink.href = ''; // Replace with your file storage URL
+        fileLink.download = message.fileName;
+        fileLink.textContent = message.fileName;
+        fileDownload.appendChild(fileIcon);
+        fileDownload.appendChild(fileLink);
+        messageElement.appendChild(fileDownload);
+      }
+
+      fetchPostCount();
+
+      return messageElement;
+    }
+
+    function getCurrentTime() {
+      const now = new Date();
+      const day = now.toLocaleDateString('en-US', { weekday: 'long' });
+      const date = now.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+      const hours = now.getHours().toString().padStart(2, '0');
+      const minutes = now.getMinutes().toString().padStart(2, '0');
+      return `${day}, ${date} ${hours}:${minutes}`;
+    }
+
+    function fetchPostCount() {
+      messagesRef.once('value')
+        .then((snapshot) => {
+          const postCount = snapshot.numChildren();
+          postCounterElement.innerHTML = `<i class="fas fa-heart"></i> Total Posts: ${postCount}`;
+        })
+        .catch((error) => {
+          console.error('Failed to fetch post count:', error);
+        });
+    }
+
+
+  </script>
+</body>
+
+</html>
